@@ -1,0 +1,58 @@
+# v2 syntax
+version: '2'
+
+# Named volumes
+volumes:
+  # Postgres Data
+  sandbox-postgres-data:
+    driver: local
+
+  # Redis Data
+  sandbox-redis-data:
+    driver: local
+
+services:
+  # Postgres (9.5)
+  postgres:
+    image: ambientum/postgres:9.6
+    container_name: sandbox-postgres
+    volumes:
+      - sandbox-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=sandbox
+      - POSTGRES_DB=sandbox
+      - POSTGRES_USER=sandbox
+
+  # Redis
+  cache:
+    image: ambientum/redis:3.2
+    container_name: sandbox-redis
+    command: --appendonly yes
+    volumes:
+      - sandbox-redis-data:/data
+    ports:
+      - "6379:6379"
+
+  # PHP (with Caddy)
+  app:
+    image: ambientum/php:7.0-caddy
+    container_name: sandbox-app
+    volumes:
+      - .:/var/www/app
+    ports:
+      - "80:8080"
+    links:
+      - postgres
+      - cache
+
+  # Laravel Queues
+  queue:
+    image: ambientum/php:7.0
+    container_name: sandbox-queue
+    command: php artisan queue:listen
+    volumes:
+      - .:/var/www/app
+    links:
+      - cache
